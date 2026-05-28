@@ -1,0 +1,37 @@
+{
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "app-campeonato-pokemon",
+          "appId": "1:31260440309:android:e0226ba61799bfdc81b7bc",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "app-campeonato-pokemon",
+          "configurations": {
+            "android": "1:31260440309:android:e0226ba61799bfdc81b7bc",
+            "web": "1:31260440309:web:8cf4cc3cd58c0dcd81b7bc",
+            "windows": "1:31260440309:web:8cf4cc3cd58c0dcd81b7bc"
+          }
+        }
+      }
+    }
+  },
+  "hosting": {
+    "public": "build/web",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ],
+    "rewrites": [
+      {
+        "source": "**",
+        "destination": "/index.html"
+      }
+    ]
+  }
+}

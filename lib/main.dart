@@ -1,9 +1,17 @@
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
-import 'sobre.dart';
-import 'tela_cadastro.dart';
-import 'tela_home.dart';
 
-void main() {
+import 'firebase_options.dart';
+import 'view/home_view.dart';
+import 'view/sobre_view.dart';
+import 'view/tela_cadastro_view.dart';
+
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+
   runApp(const AppPokemon());
 }
 
@@ -15,7 +23,31 @@ class AppPokemon extends StatelessWidget {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'App Pokemon',
-      home: const TelaInicial(),
+      home: const VerificarLoginInicial(),
+    );
+  }
+}
+
+class VerificarLoginInicial extends StatelessWidget {
+  const VerificarLoginInicial({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<User?>(
+      stream: FirebaseAuth.instance.authStateChanges(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Scaffold(
+            body: Center(child: CircularProgressIndicator()),
+          );
+        }
+
+        if (snapshot.hasData) {
+          return const TelaHome();
+        }
+
+        return const TelaInicial();
+      },
     );
   }
 }
@@ -38,33 +70,128 @@ class _TelaInicialState extends State<TelaInicial> {
     super.dispose();
   }
 
-  void fazerLogin() {
+  Future<void> fazerLogin() async {
     final email = emailController.text.trim();
-    final senha = senhaController.text;
+    final senha = senhaController.text.trim();
 
     if (email.isEmpty || senha.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Preencha e-mail e senha'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      erro('Preencha e-mail e senha');
       return;
     }
 
     if (!email.contains('@')) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Digite um e-mail válido'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      erro('Digite um e-mail válido');
       return;
     }
 
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (context) => const TelaHome()),
+    try {
+      await FirebaseAuth.instance.signInWithEmailAndPassword(
+        email: email,
+        password: senha,
+      );
+
+      if (!mounted) return;
+
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => const TelaHome()),
+      );
+    } on FirebaseAuthException catch (e) {
+      String mensagem = 'Erro ao fazer login';
+
+      if (e.code == 'user-not-found') {
+        mensagem = 'Usuário não encontrado';
+      } else if (e.code == 'wrong-password') {
+        mensagem = 'Senha incorreta';
+      } else if (e.code == 'invalid-email') {
+        mensagem = 'E-mail inválido';
+      } else if (e.code == 'invalid-credential') {
+        mensagem = 'E-mail ou senha incorretos';
+      }
+
+      erro(mensagem);
+    }
+  }
+
+  void recuperarSenha() {
+    showDialog(
+      context: context,
+      builder: (context) {
+        final TextEditingController recuperarController =
+            TextEditingController();
+
+        return AlertDialog(
+          title: const Text('Recuperar senha'),
+          content: TextField(
+            controller: recuperarController,
+            keyboardType: TextInputType.emailAddress,
+            decoration: const InputDecoration(
+              labelText: 'Digite seu e-mail',
+              border: OutlineInputBorder(),
+              prefixIcon: Icon(Icons.email),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context);
+              },
+              child: const Text('Cancelar'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                esqueceuSenha(context, recuperarController.text.trim());
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFC9A227),
+                foregroundColor: Colors.black,
+              ),
+              child: const Text('Enviar'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> esqueceuSenha(BuildContext context, String email) async {
+    if (email.isEmpty) {
+      erro('Informe o e-mail para recuperar a senha.');
+      return;
+    }
+
+    if (!email.contains('@')) {
+      erro('Digite um e-mail válido.');
+      return;
+    }
+
+    Navigator.pop(context);
+
+    try {
+      await FirebaseAuth.instance.sendPasswordResetEmail(email: email);
+      sucesso('E-mail enviado com sucesso.');
+    } on FirebaseAuthException catch (e) {
+      String mensagem = 'Erro ao recuperar senha';
+
+      if (e.code == 'user-not-found') {
+        mensagem = 'Nenhum usuário encontrado com esse e-mail';
+      } else if (e.code == 'invalid-email') {
+        mensagem = 'E-mail inválido';
+      }
+
+      erro(mensagem);
+    }
+  }
+
+  void erro(String mensagem) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(mensagem), backgroundColor: Colors.red),
+    );
+  }
+
+  void sucesso(String mensagem) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(mensagem), backgroundColor: Colors.green),
     );
   }
 
@@ -73,7 +200,7 @@ class _TelaInicialState extends State<TelaInicial> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Login'),
-        backgroundColor: Colors.amber,
+        backgroundColor: const Color(0xFFC9A227),
         foregroundColor: Colors.black,
       ),
       body: Container(
@@ -94,14 +221,17 @@ class _TelaInicialState extends State<TelaInicial> {
             padding: const EdgeInsets.all(20),
             child: Container(
               padding: const EdgeInsets.all(20),
-              color: Colors.white,
+              decoration: BoxDecoration(
+                color: const Color(0xFFF8F4E8),
+                borderRadius: BorderRadius.circular(18),
+              ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   const Icon(
                     Icons.account_circle,
                     size: 80,
-                    color: Colors.amber,
+                    color: Color(0xFFC9A227),
                   ),
                   const SizedBox(height: 10),
                   const Text(
@@ -116,7 +246,6 @@ class _TelaInicialState extends State<TelaInicial> {
                     style: TextStyle(fontSize: 16, color: Colors.grey),
                   ),
                   const SizedBox(height: 20),
-
                   TextField(
                     controller: emailController,
                     keyboardType: TextInputType.emailAddress,
@@ -126,9 +255,7 @@ class _TelaInicialState extends State<TelaInicial> {
                       prefixIcon: Icon(Icons.email),
                     ),
                   ),
-
                   const SizedBox(height: 15),
-
                   TextField(
                     controller: senhaController,
                     obscureText: true,
@@ -138,37 +265,61 @@ class _TelaInicialState extends State<TelaInicial> {
                       prefixIcon: Icon(Icons.lock),
                     ),
                   ),
-
-                  const SizedBox(height: 20),
-
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: TextButton(
+                      onPressed: recuperarSenha,
+                      child: const Text(
+                        'Esqueci minha senha',
+                        style: TextStyle(
+                          color: Color(0xFF5C4324),
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ),
                   ElevatedButton.icon(
                     onPressed: fazerLogin,
                     icon: const Icon(Icons.login),
                     label: const Text('Login'),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.amber,
+                      backgroundColor: const Color(0xFFC9A227),
                       foregroundColor: Colors.black,
                       padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
                     ),
                   ),
-
-                  const SizedBox(height: 10),
-
-                  OutlinedButton.icon(
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const TelaCadastro(),
+                  const SizedBox(height: 16),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Text(
+                        'Ainda não tem conta? ',
+                        style: TextStyle(color: Colors.grey, fontSize: 15),
+                      ),
+                      GestureDetector(
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const TelaCadastro(),
+                            ),
+                          );
+                        },
+                        child: const Text(
+                          'Cadastre-se',
+                          style: TextStyle(
+                            color: Color(0xFF5C4324),
+                            fontSize: 15,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
-                      );
-                    },
-                    icon: const Icon(Icons.person_add),
-                    label: const Text('Cadastrar'),
+                      ),
+                    ],
                   ),
-
                   const SizedBox(height: 20),
-
                   TextButton(
                     onPressed: () {
                       Navigator.push(
@@ -180,7 +331,7 @@ class _TelaInicialState extends State<TelaInicial> {
                     },
                     child: const Text(
                       'Sobre',
-                      style: TextStyle(color: Colors.black),
+                      style: TextStyle(color: Color(0xFF5C4324)),
                     ),
                   ),
                 ],

@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "31260440309",
+    "project_id": "app-campeonato-pokemon",
+    "storage_bucket": "app-campeonato-pokemon.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:31260440309:android:e0226ba61799bfdc81b7bc",
+        "android_client_info": {
+          "package_name": "com.example.app_p1"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCW5tORXXUL9aDvtiHyItzVibxkEf-W_Lo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
